@@ -34,6 +34,7 @@ You can install requirements by
 ```
 
 ## 2. Task
+Note: Try to add inference time as well as  accuracy when reporting results, Refer to opts.py for conducting experiments
 + Complete Expert Binary Convolution (models/ebconv.py)
 + Train your model with n_experts = 4, width_multiplier = 2 and report result
 + Refer to 2 - step training strategy 
@@ -43,5 +44,4 @@ You can install requirements by
 + Varying temperature in Softmax
 + Varying number of groups for grouped convolution
 + …
-+ Try to add inference time as well as  accuracy when reporting results
-+ Refer to opts.py for conducting experiments
+
