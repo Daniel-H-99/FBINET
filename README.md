@@ -12,7 +12,11 @@ You can install requirements by
 
 
 ### 1.2. Data preparation
- Download the dataset from the official [webpage](http://image-net.org/download-images), creating a folder with the following structure: 
+ You can download tiny imagenet data by
+
+    sh tinyimagenet.sh
+
+ The data folder may be like the following structure: 
 ```
 │imagenet/
 ├──train/
@@ -21,16 +25,23 @@ You can install requirements by
 │  │   ├── n01440764_10027.JPEG
 │  │   ├── ......
 │  ├── ......
-├──val/
+├──valid/
 │  ├── n01440764
 │  │   ├── ILSVRC2012_val_00000293.JPEG
 │  │   ├── ILSVRC2012_val_00002138.JPEG
 │  │   ├── ......
 │  ├── ......
 ```
-You can construct this structure using for example the script found [here](https://gist.github.com/BIGBALLON/8a71d225eff18d88e469e6ea9b39cef4).
 
 ## 2. Task
-Modify the code (Refer to #ToDo marks). You may freely modify any segment.
-1. 
-## Sample Result
++Complete Expert Binary Convolution (models/ebconv.py)
++Train your model with n_experts = 4, width_multiplier = 2 and report result
++Refer to 2 - step training strategy 
++Try 2 modification of model
++Varying Number of experts / Width Multiplier
++Replacement of Softmax with Sigmoid
++Varying temperature in Softmax
++Varying number of groups for grouped convolution
++…
++Try to add inference time as well as  accuracy when reporting results
++Refer to opts.py for conducting experiments
