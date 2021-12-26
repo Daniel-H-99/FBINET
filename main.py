@@ -316,6 +316,8 @@ def main_worker(gpu, ngpus_per_node, args):
         normalize,
     ])
     transforms_val = transforms.Compose([
+        transforms.Resize(80),
+        transforms.CenterCrop(64),
         transforms.ToTensor(),
         normalize,
     ])
@@ -530,6 +532,7 @@ def validate(val_loader, model, criterion, args, show_logs=True):
             if i % args.print_freq == 0 and show_logs:
                 progress.display(i)
 
+        # TODO: this should also be done with the ProgressMeter
         if show_logs:
             print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
                   .format(top1=top1, top5=top5))

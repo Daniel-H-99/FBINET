@@ -29,5 +29,7 @@ for i in $(seq 1 $length); do
     mkdir -p $directory
     mv images/$file $directory
 done
+
+mv $current/val $current/valid
 rm -r images
 echo "done"

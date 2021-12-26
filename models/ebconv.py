@@ -12,16 +12,20 @@ from bnn import BConfig, bconfig
 from bnn.layers.helpers import copy_paramters
 
 
-# Todo: Implement Gate Function for Expert Selection
 class BinarySoftActivation(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, input):
-        pass
+        # ctx.save_for_backward(input)
+        return (input == input.max(dim=1, keepdim=True)
+                [0]).view_as(input).type_as(input)
 
     @staticmethod
     def backward(ctx, grad_output):
-        pass
+        #input, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        #grad_input.masked_fill_(input.ge(1) | input.le(-1), 0)
+        return grad_input
 
 
 class EBConv2d(nn.Module):
@@ -76,6 +80,15 @@ class EBConv2d(nn.Module):
         self.fc = nn.Linear(in_channels, num_experts)
         self.activation = activation
 
+        # se head
+        if self.use_se:
+            self.se_fc = nn.Sequential(
+                nn.Linear(in_channels, out_channels // 8, bias=False),
+                nn.ReLU(inplace=True),
+                nn.Linear(out_channels // 8, out_channels, bias=False),
+                nn.Sigmoid()
+            )
+
         if bconfig is not None:
             self.activation_pre_process = bconfig.activation_pre_process()
             self.activation_post_process = bconfig.activation_post_process(
@@ -95,35 +108,50 @@ class EBConv2d(nn.Module):
     def forward(self, x):
         B, C, H, W = x.size()
 
-        # Todo: Compute the expert selection (gate_x) 
-        # (hint) use BinarySoftActivation
-        gate_x = None
-        pass
+        # Compute the expert selection
+        avg_x = F.adaptive_avg_pool2d(x, 1).flatten(1)
+        gate_x = self.activation(self.fc(avg_x))
+        # WTA function with Identity
+        gate_x = BinarySoftActivation.apply(gate_x)
 
-        # For Initial Step: Supress the expert selection temporarily, select expert 0 always.
+        # Supress the expert selection temporarily, select expert 0 always.
         if (self.bconfig is None or isinstance(
                 self.activation_pre_process,
                 nn.Identity)) or self.use_only_first:
             gate_x = gate_x * torch.zeros_like(gate_x)
             gate_x[:, 0] = gate_x[:, 0] + torch.ones_like(gate_x[:, 0])
 
-        # Todo: calculate selected weight, bias for convolution
         base_weight = self.weight
-        weight = None
+        weight = torch.matmul(
+            gate_x,
+            base_weight.view(self.num_experts, -1)
+        ).view(B * self.out_channels, self.in_channels // self.groups, self.kernel_size, self.kernel_size)
+
         bias = None
-        pass
+        if self.bias is not None:
+            bias = torch.matmul(gate_x, self.bias).flatten()
 
-        # Todo: Binarize the weights and the input features
+        # Binarize the weights and the input features
         if self.bconfig is not None:
-            pass
+            weight = self.weight_pre_process(weight)
+            x = self.activation_pre_process(x)
 
-        # Todo: Conduct Convolution with calculated weight, base
-        out = None
-        pass
+        x = x.view(1, B * C, H, W)
+        out = F.conv2d(
+            x, weight, bias, stride=self.stride, padding=self.padding,
+            dilation=self.dilation, groups=self.groups * B
+        )
+        out = out.permute([1, 0, 2, 3]).view(
+            B, self.out_channels, out.shape[-2], out.shape[-1])
 
-        # Todo: Apply learnable alpha if set
+        # Apply learnable alpha if set
         if self.bconfig is not None:
-            pass
+            out = self.activation_post_process(out, x)
+
+        if self.use_se:
+            scaling = self.se_fc(avg_x)  # Use feature pre-binarization
+            scaling = scaling.view(B, scaling.size(1), 1, 1)
+            out = out.mul(scaling.expand_as(out))
 
         return out
 
